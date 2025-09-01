@@ -2,7 +2,7 @@
     return (
         <aside className="w-80 p-4 min-h-screen sticky top-0 bg-white text-black dark:bg-black dark:text-white">
             <div className="rounded-2xl p-4 mb-4 bg-gray-50 dark:bg-gray-900">
-                <h2 className="text-xl font-bold mb-3">What's happening</h2>
+                <h2 className="text-xl font-bold mb-3">{"What's happening"}</h2>
                 <div className="space-y-3">
                     {[
                         { k: "tech", h1: "Trending in Technology", h2: "React 19", c: "125K Tweets" },
