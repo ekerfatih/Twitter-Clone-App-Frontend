@@ -1,6 +1,7 @@
 ﻿"use client";
 
-import { useState, type FormEvent } from "react";
+import { Suspense, type FormEvent } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/app/providers/AuthProvider";
@@ -9,6 +10,14 @@ import ThemeToggle from "@/components/ThemeToggle";
 type LoginResponse = { message: string; username: string };
 
 export default function LoginPage() {
+    return (
+        <Suspense fallback={null}>
+            <LoginInner />
+        </Suspense>
+    );
+}
+
+function LoginInner() {
     const router = useRouter();
     const sp = useSearchParams();
     const nextParam = sp.get("next") ?? "/";
@@ -39,8 +48,7 @@ export default function LoginPage() {
                 let data: LoginResponse | null = null;
                 try {
                     data = (await res.json()) as LoginResponse;
-                } catch {
-                }
+                } catch {}
                 setAuth({ username: data?.username ?? username });
                 router.replace(nextParam);
                 router.refresh();
@@ -51,8 +59,7 @@ export default function LoginPage() {
             try {
                 const body = (await res.json()) as { message?: string };
                 if (body?.message) message = body.message;
-            } catch {
-            }
+            } catch {}
             setError(message);
         } catch {
             setError("Sunucuya ulaşılamadı. Backend çalışıyor mu?");
@@ -63,7 +70,6 @@ export default function LoginPage() {
 
     return (
         <main className="relative min-h-screen overflow-hidden text-black dark:text-white">
-            {/* Tam ekran arka plan (gradient + opsiyonel doku) */}
             <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-200 via-purple-200 to-pink-200 dark:from-slate-900 dark:via-indigo-950 dark:to-black" />
                 <div
@@ -76,7 +82,6 @@ export default function LoginPage() {
                 />
             </div>
 
-            {/* Üst navbar (100vw) */}
             <header className="fixed inset-x-0 top-0 z-20 bg-white/80 dark:bg-black/60 backdrop-blur-md border-b border-black/10 dark:border-white/10">
                 <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
                     <div className="flex items-center gap-2 text-xl font-bold">
@@ -87,13 +92,9 @@ export default function LoginPage() {
                 </div>
             </header>
 
-            {/* İçerik */}
             <div className="pt-16">
                 <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-7xl grid-cols-1 md:grid-cols-2">
-                    {/* Sol sütun boş; gradient görünsün */}
                     <section className="hidden md:block" />
-
-                    {/* Sağ sütun – form */}
                     <section className="flex items-center justify-center p-6">
                         <div className="w-full max-w-sm rounded-2xl border border-black/10 bg-white/85 p-6 shadow-lg backdrop-blur dark:border-white/10 dark:bg-black/70">
                             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
