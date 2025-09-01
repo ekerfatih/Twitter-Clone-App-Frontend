@@ -34,6 +34,7 @@ export default function Sidebar() {
                         <Link
                             key={href}
                             href={href}
+                            prefetch={false}
                             className={`flex items-center space-x-3 w-full p-3 rounded-full transition-colors ${
                                 active ? "font-semibold" : ""
                             } hover:bg-gray-100 text-black dark:hover:bg-gray-900 dark:text-white`}
