@@ -1,10 +1,10 @@
 ﻿"use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { parseLocalDateTime, timeAgoText } from "@/lib/date";
-import { useAuth } from "@/app/providers/AuthProvider";
-import type { Comment } from "@/types/comment";
+import {useState} from "react";
+import {useRouter} from "next/navigation";
+import {parseLocalDateTime, timeAgoText} from "@/lib/date";
+import {useAuth} from "@/app/providers/AuthProvider";
+import type {Comment} from "@/types/comment";
 
 export default function CommentRow({
                                        comment,
@@ -14,7 +14,7 @@ export default function CommentRow({
     tweetOwner?: string;
 }) {
     const when = parseLocalDateTime(comment.time);
-    const { auth } = useAuth();
+    const {auth} = useAuth();
     const router = useRouter();
 
     const isCommentOwner = auth?.username === comment.username;
@@ -33,19 +33,36 @@ export default function CommentRow({
 
         setBusy(true);
         setErr(null);
+
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 8000);
+
+        // Optimistik kaldır
+        window.dispatchEvent(new CustomEvent("comment:deleted", {detail: comment.id}));
+
         try {
             const res = await fetch(`/api/comment/${comment.id}`, {
                 method: "DELETE",
                 credentials: "include",
+                signal: controller.signal,
             });
-            if (res.ok || res.status === 204) {
-                router.refresh();
-            } else {
+
+            if (res.status === 401) {
+                window.dispatchEvent(new CustomEvent("comment:created", {detail: comment}));
+                document.cookie = "access_token=; Max-Age=0; Path=/";
+                window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+                return;
+            }
+
+            if (!(res.ok || res.status === 204)) {
                 setErr("Silme başarısız.");
+                window.dispatchEvent(new CustomEvent("comment:created", {detail: comment}));
             }
         } catch {
-            setErr("Ağ hatası. Lütfen tekrar dene.");
+            setErr("Ağ hatası.");
+            window.dispatchEvent(new CustomEvent("comment:created", {detail: comment}));
         } finally {
+            clearTimeout(timer);
             setBusy(false);
         }
     }
@@ -53,26 +70,56 @@ export default function CommentRow({
     async function handleSave() {
         if (!canEdit || busy) return;
         const body = text.trim();
-        if (!body) return;
+        if (!body || body === comment.commentText) {
+            setEditing(false);
+            return;
+        }
 
         setBusy(true);
         setErr(null);
+
+        const optimistic = {...comment, commentText: body} as Comment;
+        window.dispatchEvent(new CustomEvent("comment:updated", {detail: optimistic}));
+        setEditing(false);
+
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 8000);
+
         try {
             const res = await fetch(`/api/comment/${comment.id}`, {
                 method: "PATCH",
-                headers: { "Content-Type": "application/json" },
+                headers: {"Content-Type": "application/json"},
                 credentials: "include",
-                body: JSON.stringify({ commentText: body }),
+                body: JSON.stringify({commentText: body}),
+                signal: controller.signal,
             });
-            if (res.ok) {
-                setEditing(false);
-                router.refresh();
-            } else {
+
+            if (res.status === 401) {
+                window.dispatchEvent(new CustomEvent("comment:updated", {detail: comment}));
+                document.cookie = "access_token=; Max-Age=0; Path=/";
+                window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+                return;
+            }
+
+            if (!res.ok) {
                 setErr("Güncelleme başarısız.");
+                window.dispatchEvent(new CustomEvent("comment:updated", {detail: comment}));
+                return;
+            }
+
+            let server: Comment | null = null;
+            try {
+                server = (await res.json()) as Comment;
+            } catch {
+            }
+            if (server && server.id === comment.id) {
+                window.dispatchEvent(new CustomEvent("comment:updated", {detail: server}));
             }
         } catch {
-            setErr("Ağ hatası. Lütfen tekrar dene.");
+            setErr("Ağ hatası.");
+            window.dispatchEvent(new CustomEvent("comment:updated", {detail: comment}));
         } finally {
+            clearTimeout(timer);
             setBusy(false);
         }
     }

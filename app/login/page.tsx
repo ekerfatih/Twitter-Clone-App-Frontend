@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useAuth } from "@/app/providers/AuthProvider";
 import ThemeToggle from "@/components/ThemeToggle";
 
-type LoginResponse = { message: string; username: string };
+type LoginResponse = { message?: string; username?: string };
 
 export default function LoginPage() {
     return (
@@ -29,44 +29,56 @@ function LoginInner() {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
 
-    async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         if (loading) return;
-
         setError(null);
         setLoading(true);
 
+        document.cookie = "access_token=; Max-Age=0; Path=/";
+
+        const f = new FormData(e.currentTarget);
+        const u = String(f.get("username") || "").trim().toLowerCase();
+        const p = String(f.get("password") || "");
+
         try {
-            const res = await fetch("/api/login", {
+            const res = await fetch("/api/auth/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify({ username, password }),
+                body: JSON.stringify({ username: u, password: p }),
+                cache: "no-store",
+                redirect: "manual",
             });
 
-            if (res.ok) {
-                let data: LoginResponse | null = null;
-                try {
-                    data = (await res.json()) as LoginResponse;
-                } catch {}
-                setAuth({ username: data?.username ?? username });
-                router.replace(nextParam);
-                router.refresh();
+            const ct = res.headers.get("content-type") ?? "";
+            const txt = await res.text();
+            const body: { message?: string; username?: string; token?: string } =
+                ct.toLowerCase().includes("application/json") && txt ? JSON.parse(txt) : {};
+
+            if (!res.ok) {
+                setError(body.message ?? `login failed (${res.status})`);
+                setLoading(false);
                 return;
             }
 
-            let message = "Giriş başarısız. Kullanıcı adı veya şifre hatalı olabilir.";
-            try {
-                const body = (await res.json()) as { message?: string };
-                if (body?.message) message = body.message;
-            } catch {}
-            setError(message);
+            const token = body.token || null;
+            if (!token) {
+                setError("token missing");
+                setLoading(false);
+                return;
+            }
+
+            const secure = location.protocol === "https:";
+            document.cookie = `access_token=${token}; Path=/; SameSite=Lax; Max-Age=600${secure ? "; Secure" : ""}`;
+
+            setAuth?.({ username: body.username ?? u });
+            router.replace(nextParam);
         } catch {
-            setError("Sunucuya ulaşılamadı. Backend çalışıyor mu?");
-        } finally {
+            setError("server error");
             setLoading(false);
         }
     }
+
 
     return (
         <main className="relative min-h-screen overflow-hidden text-black dark:text-white">
@@ -74,11 +86,7 @@ function LoginInner() {
                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-200 via-purple-200 to-pink-200 dark:from-slate-900 dark:via-indigo-950 dark:to-black" />
                 <div
                     className="absolute inset-0 opacity-25 dark:opacity-15 [mask-image:radial-gradient(ellipse_at_center,black_35%,transparent_75%)]"
-                    style={{
-                        backgroundImage: "url(/login-hero.jpg)",
-                        backgroundSize: "cover",
-                        backgroundPosition: "center",
-                    }}
+                    style={{ backgroundImage: "url(/login-hero.jpg)", backgroundSize: "cover", backgroundPosition: "center" }}
                 />
             </div>
 
@@ -99,9 +107,7 @@ function LoginInner() {
                         <div className="w-full max-w-sm rounded-2xl border border-black/10 bg-white/85 p-6 shadow-lg backdrop-blur dark:border-white/10 dark:bg-black/70">
                             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                                 <div className="grid gap-1.5">
-                                    <label htmlFor="username" className="text-sm font-medium">
-                                        Kullanıcı Adı
-                                    </label>
+                                    <label htmlFor="username" className="text-sm font-medium">Kullanıcı Adı</label>
                                     <input
                                         id="username"
                                         name="username"
@@ -116,9 +122,7 @@ function LoginInner() {
                                 </div>
 
                                 <div className="grid gap-1.5">
-                                    <label htmlFor="password" className="text-sm font-medium">
-                                        Şifre
-                                    </label>
+                                    <label htmlFor="password" className="text-sm font-medium">Şifre</label>
                                     <div className="flex gap-2">
                                         <input
                                             id="password"
@@ -144,11 +148,7 @@ function LoginInner() {
                                     </div>
                                 </div>
 
-                                {error && (
-                                    <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-                                        {error}
-                                    </p>
-                                )}
+                                {error && <p className="text-sm text-red-600 dark:text-red-400" role="alert">{error}</p>}
 
                                 <button
                                     type="submit"
@@ -159,10 +159,7 @@ function LoginInner() {
                                 </button>
 
                                 <div className="text-center text-sm text-black/70 dark:text-white/70">
-                                    Hesabın yok mu?{" "}
-                                    <Link href="/register" className="underline">
-                                        Kayıt ol
-                                    </Link>
+                                    Hesabın yok mu? <Link href="/register" className="underline">Kayıt ol</Link>
                                 </div>
                             </form>
                         </div>

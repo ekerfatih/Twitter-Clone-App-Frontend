@@ -1,10 +1,12 @@
 import type { NextConfig } from "next";
 
-const BACKEND_URL = "https://s19challange-production.up.railway.app";
+const BACKEND = process.env.BACKEND_URL ?? "http://130.61.88.121:9000/workintech";
 
 const nextConfig: NextConfig = {
     async rewrites() {
-        return [{ source: "/api/:path*", destination: `${BACKEND_URL}/:path*` }];
+        return [
+            { source: "/api/:path*", destination: `${BACKEND}/:path*` },
+        ];
     },
 };
 
