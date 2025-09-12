@@ -1,5 +1,6 @@
 ﻿"use client";
 import {useRouter} from "next/navigation";
+<<<<<<< HEAD
 import {useAuth} from "@/app/providers/AuthProvider";
 
 export default function LogoutButton() {
@@ -16,8 +17,34 @@ export default function LogoutButton() {
             router.replace("/login");
         } else {
             alert("Çıkış başarısız.");
+=======
+
+export default function LogoutButton() {
+    const router = useRouter();
+
+    async function onLogout() {
+        try {
+            const res = await fetch("/api/logout", {
+                method: "POST",
+                credentials: "include",
+            });
+
+            if (res.ok || res.status === 204) {
+                router.replace("/login");
+            } else {
+                console.error("Logout failed:", res.status);
+                alert("Çıkış başarısız.");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Sunucuya ulaşılamadı.");
+>>>>>>> parent of 361d8fb (.)
         }
     }
 
-    return <button onClick={onLogout} className="rounded-lg border px-3 py-2">Çıkış Yap</button>;
+    return (
+        <button onClick={onLogout} className="rounded-lg border px-3 py-2">
+            Çıkış Yap
+        </button>
+    );
 }

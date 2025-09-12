@@ -27,8 +27,6 @@ export default function TweetMenu({ tweetId, tweetOwner, initialText }: Props) {
     const btnRef = useRef<HTMLButtonElement>(null);
     const menuRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => setText(initialText), [initialText]);
-
     useEffect(() => {
         function onDoc(e: MouseEvent) {
             if (
@@ -64,9 +62,7 @@ export default function TweetMenu({ tweetId, tweetOwner, initialText }: Props) {
             });
             if (res.ok || res.status === 204) {
                 if (pathname.startsWith("/tweet/")) router.replace("/");
-                else router.refresh();
-            } else if (res.status === 401) {
-                router.push(`/login?next=${encodeURIComponent(pathname)}`);
+                router.refresh();
             } else {
                 alert("Silme başarısız.");
             }
@@ -92,8 +88,6 @@ export default function TweetMenu({ tweetId, tweetOwner, initialText }: Props) {
                 setEditing(false);
                 setOpen(false);
                 router.refresh();
-            } else if (res.status === 401) {
-                setErr("Oturum gerekli.");
             } else {
                 setErr("Kaydedilemedi.");
             }
@@ -120,10 +114,11 @@ export default function TweetMenu({ tweetId, tweetOwner, initialText }: Props) {
             {open && (
                 <div
                     ref={menuRef}
-                    className="absolute right-0 mt-2 w-44 rounded-xl border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-800 dark:bg-black z-10"
+                    className="absolute right-0 mt-2 w-44 rounded-xl border border-gray-200 bg-white p-1 shadow-lg
+                     dark:border-gray-800 dark:bg-black z-10"
                     role="menu"
                 >
-                    {isOwner ? (
+                    {isOwner && (
                         <>
                             <button
                                 onClick={() => {
@@ -143,7 +138,8 @@ export default function TweetMenu({ tweetId, tweetOwner, initialText }: Props) {
                                 Sil
                             </button>
                         </>
-                    ) : (
+                    )}
+                    {!isOwner && (
                         <div className="px-3 py-2 text-sm text-gray-500">Eylem yok</div>
                     )}
                 </div>
@@ -151,21 +147,25 @@ export default function TweetMenu({ tweetId, tweetOwner, initialText }: Props) {
 
             {editing && (
                 <div className="fixed inset-0 z-20 grid place-items-center bg-black/50 p-4">
-                    <div className="w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-4 shadow-xl dark:border-gray-800 dark:bg-zinc-950">
+                    <div className="w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-4 shadow-xl
+                          dark:border-gray-800 dark:bg-zinc-950">
                         <h3 className="text-lg font-semibold mb-3">Tweet’i düzenle</h3>
                         <textarea
                             value={text}
                             onChange={(e) => setText(e.target.value)}
                             maxLength={300}
                             rows={5}
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:ring-2 dark:border-gray-700 dark:bg-black dark:text-white"
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none
+                         focus:ring-2 dark:border-gray-700 dark:bg-black dark:text-white"
                         />
                         <div className="mt-2 text-xs text-gray-500">{text.length}/300</div>
                         {err && <p className="mt-2 text-sm text-red-500">{err}</p>}
+
                         <div className="mt-4 flex justify-end gap-2">
                             <button
                                 onClick={() => setEditing(false)}
-                                className="rounded-lg border px-3 py-1.5 text-sm border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-900"
+                                className="rounded-lg border px-3 py-1.5 text-sm
+                           border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-900"
                             >
                                 İptal
                             </button>
