@@ -1,15 +1,14 @@
 ﻿import { redirect } from "next/navigation";
 import Feed from "@/components/Feed";
 import { isTweetArray } from "@/types/tweet";
-import { getBaseUrl, looksJson } from "@/lib/server-url";
 import { getCookieHeader } from "@/lib/cookies";
 
 export const dynamic = "force-dynamic";
 
 async function fetchUserTweets(username: string) {
     const cookieHeader = await getCookieHeader();             // <<< değişti
-    const base = await getBaseUrl();
-    const url = `${base}/api/tweet/user/${encodeURIComponent(username)}`;
+    const base = "http://130.61.88.121:9000/workintech";
+    const url = `${base}/tweet/user/${encodeURIComponent(username)}`;
 
     const res = await fetch(url, {
         headers: { cookie: cookieHeader },
@@ -20,7 +19,6 @@ async function fetchUserTweets(username: string) {
     if (!res.ok) return [];
 
     const ct = res.headers.get("content-type");
-    if (!looksJson(ct)) return [];
 
     const data: unknown = await res.json();
     return isTweetArray(data) ? data : [];
