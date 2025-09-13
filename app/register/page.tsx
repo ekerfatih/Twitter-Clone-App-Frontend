@@ -174,9 +174,9 @@ export default function RegisterPage() {
         <main className="min-h-screen flex items-center justify-center p-6">
             <div className="w-full max-w-md rounded-2xl border border-gray-200 p-6 shadow-sm">
                 {/* Bilgilendirme */}
-                <p className="mb-4 p-3 rounded-lg bg-yellow-100 text-yellow-800 text-center text-sm">
-                    Kayıt fonksiyonu kapatılmıştır. Demo için lütfen iletişime geçiniz.
-                </p>
+                {/*<p className="mb-4 p-3 rounded-lg bg-yellow-100 text-yellow-800 text-center text-sm">*/}
+                {/*    Kayıt fonksiyonu kapatılmıştır. Demo için lütfen iletişime geçiniz.*/}
+                {/*</p>*/}
 
                 <h1 className="text-2xl font-semibold mb-4">Kayıt Ol</h1>
 
