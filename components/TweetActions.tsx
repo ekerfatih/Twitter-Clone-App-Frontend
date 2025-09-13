@@ -1,22 +1,14 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProvider";
 
-type Props = {
-    tweetId: number;
-    tweetOwner: string;
-    initialText: string;
-};
-
+type Props = { tweetId: number; tweetOwner: string; initialText: string };
 type TweetPatch = { tweetText: string };
 
-function looksJson(ct: string | null): boolean {
-    return (ct ?? "").toLowerCase().includes("application/json");
-}
-const norm = (x?: string | null) =>
-    typeof x === "string" ? x.trim().toLowerCase() : null;
+const norm = (x?: string | null) => (typeof x === "string" ? x.trim().toLowerCase() : null);
+const isJson = (ct: string | null) => (ct ?? "").toLowerCase().includes("application/json");
 
 export default function TweetActions({ tweetId, tweetOwner, initialText }: Props) {
     const router = useRouter();
@@ -31,6 +23,10 @@ export default function TweetActions({ tweetId, tweetOwner, initialText }: Props
     const [loading, setLoading] = useState(false);
     const [err, setErr] = useState<string | null>(null);
 
+    useEffect(() => {
+        setText(initialText);
+    }, [initialText]);
+
     if (!isOwner) return null;
 
     const MAX = 300;
@@ -38,7 +34,6 @@ export default function TweetActions({ tweetId, tweetOwner, initialText }: Props
 
     async function onDelete() {
         if (!confirm("Tweet silinsin mi?")) return;
-
         setLoading(true);
         setErr(null);
         try {
@@ -48,14 +43,11 @@ export default function TweetActions({ tweetId, tweetOwner, initialText }: Props
                 headers: { Accept: "application/json" },
                 cache: "no-store",
             });
-
-            if (res.status === 401) { window.location.assign("/login"); return; }
-            if (res.status === 403) { setErr("Bu tweet'i silme yetkin yok (sadece sahibi silebilir)."); return; }
-            if (res.status === 404) { setErr("Tweet bulunamadı (404)."); return; }
+            if (res.status === 401 || res.status === 403) return router.push(`/login?next=${encodeURIComponent("/")}`);
+            if (res.status === 404) { setErr("Tweet bulunamadı."); return; }
             if (!res.ok) {
                 let msg = `Silinemedi (HTTP ${res.status}).`;
-                const ct = res.headers.get("content-type") ?? "";
-                if (ct.includes("application/json")) {
+                if (isJson(res.headers.get("content-type"))) {
                     try {
                         const obj = (await res.json()) as { message?: string };
                         if (obj?.message) msg = obj.message;
@@ -64,10 +56,10 @@ export default function TweetActions({ tweetId, tweetOwner, initialText }: Props
                 setErr(msg);
                 return;
             }
-
             router.replace("/");
+            router.refresh();
         } catch {
-            setErr("Sunucuya ulaşılamadı. Backend çalışıyor mu?");
+            setErr("Sunucuya ulaşılamadı.");
         } finally {
             setLoading(false);
         }
@@ -76,24 +68,28 @@ export default function TweetActions({ tweetId, tweetOwner, initialText }: Props
     async function onSave(e: React.FormEvent) {
         e.preventDefault();
         if (!canSave) return;
-        setLoading(true); setErr(null);
+        setLoading(true);
+        setErr(null);
         const payload: TweetPatch = { tweetText: text.trim() };
         try {
             const res = await fetch(`/api/tweet/${tweetId}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                cache: "no-store",
                 body: JSON.stringify(payload),
             });
+            if (res.status === 401 || res.status === 403) return router.push(`/login?next=${encodeURIComponent(`/tweet/${tweetId}`)}`);
             if (!res.ok) {
                 let msg = "Güncelleme başarısız.";
-                const ct = res.headers.get("content-type");
-                if (looksJson(ct)) {
+                if (isJson(res.headers.get("content-type"))) {
                     try {
-                        const obj = (await res.json()) as unknown as { message?: string };
+                        const obj = (await res.json()) as { message?: string };
                         if (obj?.message) msg = obj.message;
                     } catch {}
                 }
-                setErr(msg); return;
+                setErr(msg);
+                return;
             }
             setEditing(false);
             router.refresh();

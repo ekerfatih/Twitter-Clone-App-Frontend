@@ -3,15 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { MessageCircle, Repeat2, Heart, Share } from "lucide-react";
-import { type Tweet } from "@/types/tweet";
 
 type LikeResponse = { tweetId: number; liked: boolean; likeCount: number };
 type RetweetResponse = { tweetId: number; retweeted: boolean; retweetCount: number };
-
-function isJson(res: Response): boolean {
-    const ct = res.headers.get("content-type") ?? "";
-    return ct.toLowerCase().includes("application/json");
-}
 
 type Props = {
     tweetId: number;
@@ -33,7 +27,6 @@ export default function TweetActionBar({
                                            className = "",
                                        }: Props) {
     const router = useRouter();
-
     const [liked, setLiked] = useState<boolean>(likedByMe);
     const [likes, setLikes] = useState<number>(initialLikeCount);
     const [ret, setRet] = useState<boolean>(retweetedByMe);
@@ -48,92 +41,81 @@ export default function TweetActionBar({
     async function onLike() {
         if (busyLike) return;
         setBusyLike(true);
-        const nextLiked = !liked;
         const prevLiked = liked;
         const prevLikes = likes;
+        const nextLiked = !liked;
         setLiked(nextLiked);
         setLikes((n) => (nextLiked ? n + 1 : Math.max(0, n - 1)));
+        let ok = false;
         try {
             const method: "POST" | "DELETE" = nextLiked ? "POST" : "DELETE";
-            const res = await fetch(`/api/like/${tweetId}`, {
-                method,
-                credentials: "include",
-            });
-            if (res.ok) {
-                if (res.status !== 204 && isJson(res)) {
-                    const data: unknown = await res.json();
-                    if (
-                        typeof data === "object" &&
-                        data !== null &&
-                        typeof (data as LikeResponse).liked === "boolean" &&
-                        typeof (data as LikeResponse).likeCount === "number"
-                    ) {
-                        const d = data as LikeResponse;
-                        setLiked(d.liked);
-                        setLikes(d.likeCount);
-                    }
-                }
-                router.refresh();
-            } else {
+            const res = await fetch(`/api/like/${tweetId}`, { method, credentials: "include" });
+            if (res.status === 401 || res.status === 403) {
                 setLiked(prevLiked);
                 setLikes(prevLikes);
+                return router.push(`/login?next=${encodeURIComponent(`/tweet/${tweetId}`)}`);
             }
+            if (!res.ok) throw new Error();
+            if (res.status !== 204 && res.headers.get("content-type")?.toLowerCase().includes("json")) {
+                const d = (await res.json()) as LikeResponse;
+                if (typeof d.liked === "boolean" && typeof d.likeCount === "number") {
+                    setLiked(d.liked);
+                    setLikes(d.likeCount);
+                }
+            }
+            ok = true;
         } catch {
             setLiked(prevLiked);
             setLikes(prevLikes);
         } finally {
             setBusyLike(false);
+            if (ok) router.refresh();
         }
     }
 
     async function onRetweet() {
         if (busyRet) return;
         setBusyRet(true);
-        const next = !ret;
         const prev = ret;
         const prevCount = rets;
+        const next = !ret;
         setRet(next);
         setRets((n) => (next ? n + 1 : Math.max(0, n - 1)));
+        let ok = false;
         try {
             const method: "POST" | "DELETE" = next ? "POST" : "DELETE";
-            const res = await fetch(`/api/retweet/${tweetId}`, {
-                method,
-                credentials: "include",
-            });
-            if (res.ok) {
-                if (res.status !== 204 && isJson(res)) {
-                    const data: unknown = await res.json();
-                    if (
-                        typeof data === "object" &&
-                        data !== null &&
-                        typeof (data as RetweetResponse).retweeted === "boolean" &&
-                        typeof (data as RetweetResponse).retweetCount === "number"
-                    ) {
-                        const d = data as RetweetResponse;
-                        setRet(d.retweeted);
-                        setRets(d.retweetCount);
-                    }
-                }
-                router.refresh();
-            } else {
+            const res = await fetch(`/api/retweet/${tweetId}`, { method, credentials: "include" });
+            if (res.status === 401 || res.status === 403) {
                 setRet(prev);
                 setRets(prevCount);
+                return router.push(`/login?next=${encodeURIComponent(`/tweet/${tweetId}`)}`);
             }
+            if (!res.ok) throw new Error();
+            if (res.status !== 204 && res.headers.get("content-type")?.toLowerCase().includes("json")) {
+                const d = (await res.json()) as RetweetResponse;
+                if (typeof d.retweeted === "boolean" && typeof d.retweetCount === "number") {
+                    setRet(d.retweeted);
+                    setRets(d.retweetCount);
+                }
+            }
+            ok = true;
         } catch {
             setRet(prev);
             setRets(prevCount);
         } finally {
             setBusyRet(false);
+            if (ok) router.refresh();
         }
     }
 
     async function onShare() {
         const url = `${window.location.origin}/tweet/${tweetId}`;
         try {
-            if ("share" in navigator && typeof navigator.share === "function") {
+            if (navigator.share) {
                 await navigator.share({ url });
-            } else if ("clipboard" in navigator && navigator.clipboard?.writeText) {
+            } else if (navigator.clipboard?.writeText) {
                 await navigator.clipboard.writeText(url);
+                alert("Bağlantı kopyalandı");
             }
         } catch {}
     }

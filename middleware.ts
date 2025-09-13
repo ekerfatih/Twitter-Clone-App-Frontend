@@ -1,31 +1,17 @@
 ﻿// middleware.ts
 import { NextResponse, type NextRequest } from "next/server";
 
-const AUTH_COOKIE = "JSESSIONID";
+const AUTH_COOKIE = "access_token";
 const PUBLIC_PATHS = ["/login", "/register"];
 
-const STRICT_CHECK = false;
-const BACKEND_CHECK_URL = "https://s19challange-production.up.railway.app";
-
-async function hasSession(req: NextRequest): Promise<boolean> {
-    const hasCookie = req.cookies.has(AUTH_COOKIE);
-    if (!hasCookie) return false;
-    if (!STRICT_CHECK) return true;
-
-    try {
-        const res = await fetch(BACKEND_CHECK_URL, {
-            method: "GET",
-            headers: { cookie: req.headers.get("cookie") ?? "" },
-        });
-        return res.ok;
-    } catch {
-        return false;
-    }
+function isPublic(pathname: string) {
+    return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
-export async function middleware(req: NextRequest) {
+export function middleware(req: NextRequest) {
     const { pathname, search } = req.nextUrl;
 
+    // statik dosyalar ve API dışarıda bırakılır
     if (
         pathname.startsWith("/_next") ||
         pathname.startsWith("/favicon") ||
@@ -34,13 +20,10 @@ export async function middleware(req: NextRequest) {
         return NextResponse.next();
     }
 
-    const isPublic =
-        PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+    const token = req.cookies.get(AUTH_COOKIE)?.value;
 
-    const authed = await hasSession(req);
-
-    if (isPublic) {
-        if (authed) {
+    if (isPublic(pathname)) {
+        if (token) {
             const url = req.nextUrl.clone();
             url.pathname = "/";
             url.search = "";
@@ -49,11 +32,10 @@ export async function middleware(req: NextRequest) {
         return NextResponse.next();
     }
 
-    if (!authed) {
+    if (!token) {
         const url = req.nextUrl.clone();
         url.pathname = "/login";
-        const nextParam = encodeURIComponent(pathname + (search || ""));
-        url.search = `?next=${nextParam}`;
+        url.search = `?next=${encodeURIComponent(pathname + (search || ""))}`;
         return NextResponse.redirect(url);
     }
 

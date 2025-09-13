@@ -1,33 +1,24 @@
 ﻿"use client";
 
-import { Suspense, type FormEvent } from "react";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/app/providers/AuthProvider";
 import ThemeToggle from "@/components/ThemeToggle";
 
-type LoginResponse = { message: string; username: string };
+type LoginResponse = { message?: string; username?: string };
 
 export default function LoginPage() {
-    return (
-        <Suspense fallback={null}>
-            <LoginInner />
-        </Suspense>
-    );
-}
-
-function LoginInner() {
     const router = useRouter();
     const sp = useSearchParams();
     const nextParam = sp.get("next") ?? "/";
     const { setAuth } = useAuth();
 
-    const [username, setUsername] = useState<string>("");
-    const [password, setPassword] = useState<string>("");
-    const [showPw, setShowPw] = useState<boolean>(false);
+    const [username, setUsername] = useState("");
+    const [password, setPassword] = useState("");
+    const [showPw, setShowPw] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState<boolean>(false);
+    const [loading, setLoading] = useState(false);
 
     async function handleSubmit(e: FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -37,7 +28,7 @@ function LoginInner() {
         setLoading(true);
 
         try {
-            const res = await fetch("/api/login", {
+            const res = await fetch("/api/auth/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
@@ -57,7 +48,7 @@ function LoginInner() {
 
             let message = "Giriş başarısız. Kullanıcı adı veya şifre hatalı olabilir.";
             try {
-                const body = (await res.json()) as { message?: string };
+                const body = (await res.json()) as LoginResponse;
                 if (body?.message) message = body.message;
             } catch {}
             setError(message);

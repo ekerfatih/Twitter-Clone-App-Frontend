@@ -14,7 +14,7 @@ import { isTweet, type Tweet } from "@/types/tweet";
 
 export const dynamic = "force-dynamic";
 
-const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://s19challange-production.up.railway.app").replace(/\/+$/, "");
+const BACKEND = ("http://130.61.88.121:9000/workintech").replace(/\/+$/, "");
 
 function isJson(ct: string | null): boolean {
     return (ct ?? "").toLowerCase().includes("application/json");
